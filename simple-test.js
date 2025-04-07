@@ -1,48 +1,38 @@
-// Simple diagnostic test for OpenAI embeddings and RAG
+// Simple diagnostic test for BERT Model embeddings and RAG
 import { config } from 'dotenv';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { ChatOpenAI } from '@langchain/openai';
+import { BertEmbeddings, loadQA } from './utils/huggingFaceModels.js'; // Imports embedding and QA Bert Models
 
 // Load environment variables
 config();
 
-// Verify we have an OpenAI API key
-if (!process.env.OPENAI_API_KEY) {
-  console.error('Error: OPENAI_API_KEY is not set in the environment variables.');
-  process.exit(1);
-}
-
-async function testOpenAI() {
+async function testBERT() {
   try {
-    console.log('Starting OpenAI API test...');
-    
-    // Initialize embeddings with explicit configuration
-    const embeddings = new OpenAIEmbeddings({
-      modelName: "text-embedding-ada-002",
-      stripNewLines: true
-    });
+    console.log('Starting BERT test...');
+    const embedder = new BertEmbeddings(); // Create instance of class
     
     // Test embeddings
-    console.log('Testing OpenAI embeddings...');
+    console.log('Testing embeddings...');
     const testText = 'This is a test sentence for embeddings.';
     try {
-      const embedding = await embeddings.embedQuery(testText);
-      console.log(`Successfully generated embedding with ${embedding.length} dimensions`);
+      const embedding = await embedder.embedQuery(testText);
+      console.log(`Successfully generated embedding with ${embedding.data.length} dimensions`);
     } catch (error) {
       console.error('Error generating embeddings:', error);
     }
     
     // Test chat completions
-    console.log('\nTesting OpenAI chat completions...');
-    const llm = new ChatOpenAI({
-      modelName: 'gpt-3.5-turbo',
-      temperature: 0.2
-    });
+    console.log('\nTesting BERT chat completions...');
     
     try {
-      const result = await llm.invoke("What is RAG in the context of AI?");
+      // Test BERT Model for QA
+      const qaPipeline = await loadQA();
+      const response = await qaPipeline(
+        "What is RAG in the context of AI?",
+        "RAG stands for Retrieval-Augmented Generation. It is an AI framework that combines information retrieval with generative AI to produce more accurate and contextually relevant responses. In RAG systems, an AI model first retrieves relevant information from a knowledge base, then uses that retrieved information to generate more informed and accurate responses."
+      );
+
       console.log('Chat completion result:');
-      console.log(result.content);
+      console.log(response.answer);
     } catch (error) {
       console.error('Error generating chat completion:', error);
     }
@@ -53,6 +43,6 @@ async function testOpenAI() {
 }
 
 // Run test
-testOpenAI()
+testBERT()
   .then(() => console.log('\nTest completed.'))
   .catch(err => console.error('Unhandled error:', err));

@@ -1,22 +1,14 @@
-// RAG Demo with LangChain and OpenAI - with file output
+// RAG Demo with LangChain and HuggingFace BERT Model - with file output
 import { config } from 'dotenv';
 import { DirectoryLoader } from 'langchain/document_loaders/fs/directory';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { ChatOpenAI } from '@langchain/openai';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import fs from 'fs/promises';
+import { BertEmbeddings, loadQA } from './utils/huggingFaceModels.js'; // Imports embedding and QA Bert Models
 
 // Load environment variables
 config();
-
-// Verify we have an OpenAI API key
-if (!process.env.OPENAI_API_KEY) {
-  console.error('Error: OPENAI_API_KEY is not set in the environment variables.');
-  console.error('Please make sure you have a .env file with your OpenAI API key.');
-  process.exit(1);
-}
 
 // Create a log file for output
 async function logToFile(content) {
@@ -29,19 +21,9 @@ async function runRAGDemo() {
   // Reset the log file
   await fs.writeFile('rag-output.txt', '');
   
-  await logToFile('🚀 Starting RAG Demo with LangChain and OpenAI');
+  await logToFile('🚀 Starting RAG Demo with LangChain and BERT Model');
   
   try {
-    // Initialize models with explicit configuration
-    const embeddings = new OpenAIEmbeddings({
-      modelName: "text-embedding-ada-002",
-      stripNewLines: true
-    });
-    
-    const llm = new ChatOpenAI({
-      modelName: 'gpt-3.5-turbo',
-      temperature: 0.2
-    });
     
     // Step 1: Load documents
     await logToFile('\n📚 Loading documents...');
@@ -70,9 +52,12 @@ async function runRAGDemo() {
       }
     }
     
-    // Step 3: Create vector store
-    await logToFile('\n🧠 Creating in-memory vector store...');
-    const vectorStore = await MemoryVectorStore.fromDocuments(splitDocs, embeddings);
+    // Step 3: Embed documents & create vector store
+    await logToFile('\nCreating vector store with local embeddings...');
+    const embedder = new BertEmbeddings(); // Create instance of class
+
+    const vectorStore = await MemoryVectorStore.fromDocuments(splitDocs, embedder);
+    
     await logToFile('Vector store created successfully.');
     
     // Handle queries directly without complex chains
@@ -83,7 +68,7 @@ async function runRAGDemo() {
     ];
     
     for (const query of queries) {
-      await processQuery(query, vectorStore, llm);
+      await processQuery(query, vectorStore);
     }
     
   } catch (error) {
@@ -93,7 +78,7 @@ async function runRAGDemo() {
 }
 
 // Process a single query using the vector store
-async function processQuery(query, vectorStore, llm) {
+async function processQuery(query, vectorStore) {
   await logToFile(`\n❓ Question: ${query}`);
   await logToFile('Retrieving relevant documents...');
   
@@ -109,19 +94,13 @@ async function processQuery(query, vectorStore, llm) {
     
     // Generate response
     await logToFile('Generating answer using context...');
-    const prompt = `
-      Answer the question based on the following context:
-      
-      ${context}
-      
-      Question: ${query}
-      
-      When answering, make sure to cite your source as [Document X] where X is the document number.
-    `;
+
+    // Using BERT-model to respond
+    const qaPipeline = await loadQA();
+    const response = await qaPipeline(query, context);
     
-    const response = await llm.invoke(prompt);
     await logToFile('\n🔍 Answer:');
-    await logToFile(response.content);
+    await logToFile(response.answer);
     
   } catch (error) {
     await logToFile(`Error processing query: ${error.message}`);

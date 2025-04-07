@@ -1,11 +1,10 @@
-// Basic RAG implementation with LangChain and OpenAI
+// RAG Demo with LangChain and HuggingFace BERT Model
 import { config } from 'dotenv';
 import { DirectoryLoader } from 'langchain/document_loaders/fs/directory';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { ChatOpenAI } from '@langchain/openai';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import { BertEmbeddings, loadQA } from './utils/huggingFaceModels.js'; // Imports embedding and QA Bert Models
 
 // Load environment variables
 config();
@@ -14,15 +13,6 @@ async function runBasicRAG() {
   console.log('Starting Basic RAG Demo');
   
   try {
-    // Create embeddings and LLM instances
-    const embeddings = new OpenAIEmbeddings({
-      modelName: "text-embedding-ada-002"
-    });
-    
-    const llm = new ChatOpenAI({
-      modelName: 'gpt-3.5-turbo',
-      temperature: 0.2
-    });
     
     // Step 1: Load documents
     console.log('\nLoading documents...');
@@ -43,9 +33,12 @@ async function runBasicRAG() {
     const splitDocs = await textSplitter.splitDocuments(docs);
     console.log(`Created ${splitDocs.length} chunks.`);
     
-    // Step 3: Create vector store
-    console.log('\nCreating vector store...');
-    const vectorStore = await MemoryVectorStore.fromDocuments(splitDocs, embeddings);
+    // Step 3: Embed documents & create vector store
+    const embedder = new BertEmbeddings(); // Create instance of class
+
+    console.log('\nCreating vector store with local embeddings...');
+    const vectorStore = await MemoryVectorStore.fromDocuments(splitDocs, embedder);
+    
     console.log('Vector store created successfully!');
     
     // Step 4: Perform similarity search
@@ -64,19 +57,14 @@ async function runBasicRAG() {
     console.log('\nGenerating answer using retrieved documents...');
     
     const context = results.map(doc => doc.pageContent).join('\n\n');
-    const response = await llm.invoke(
-      `Use the following information to answer the question.
-      
-      Context information:
-      ${context}
-      
-      Question: ${query}
-      
-      Answer:`
-    );
+
+    // Using BERT-model to respond
+    const qaPipeline = await loadQA();
+    const response = await qaPipeline(query, context);
+
     
     console.log('\nAnswer:');
-    console.log(response.content);
+    console.log(response.answer);
     
   } catch (error) {
     console.error('Error in RAG demo:', error);
