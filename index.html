@@ -1,0 +1,102 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple WebSocket Chat</title>
+    <style>
+        body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; }
+        #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+        #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+        #input:focus { outline: none; }
+        #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+        #messages, #typing { list-style-type: none; margin: 0; padding: 0; }
+        #messages > li, #typing > li { padding: 0.5rem 1rem; }
+        #messages > li:nth-child(odd) { background: #efefef; }
+    </style>
+</head>
+<body>
+    <ul id="messages"></ul>
+    <ul>
+        <li id="typing"></li>
+    </ul>
+    <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <!-- Include the Socket.IO client library -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Connect to the Socket.IO server (defaults to the server that served this page)
+        const socket = io();
+
+        // Get references to the HTML elements
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const messages = document.getElementById('messages');
+        const typingIndicator = document.getElementById('typing');
+
+        // To monitor typing
+        let typing = false;
+        let timeout;
+
+        // --- Sending Messages ---
+        // Add an event listener for when the form is submitted
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission (page reload)
+            if (input.value) { // Check if the input field is not empty
+                // Emit a 'chat message' event to the server with the input value
+                socket.emit('chat message', input.value);
+                input.value = ''; // Clear the input field
+            }
+        });
+
+        // --- Typing Events ---
+        // Add an event listener for when the user types in input
+        input.addEventListener('input', function(event) { // If user changes input's value
+            if (!typing){
+                typing = true;
+                socket.emit('typing'); // Notify server that user started typing
+            }
+
+            clearTimeout(timeout); // Clear any previous timer
+
+            timeout = setTimeout(() => { // If user stops typing after 1000 ms, stop event
+                typing = false;
+                socket.emit('stop typing');
+            }, 1000);
+        });
+
+        // Add an event listener for 'typing' events coming FROM the server
+        socket.on('typing', usersTyping => {
+            const filteredUsers = usersTyping.filter(userID => userID !== socket.id); // Filters out client from list
+
+            if (filteredUsers.length === 0) { // If no one is typing
+                typingIndicator.textContent = '';
+            } else if (filteredUsers.length === 1) { // If only one person is typing
+                typingIndicator.textContent = `${filteredUsers[0]} is typing...`;
+            } else { // If multiple people are typing
+                typingIndicator.textContent = `${filteredUsers.join(', ')} are typing...`;
+            }
+        });
+
+        // --- Receiving Messages ---
+        // Add an event listener for 'chat message' events coming FROM the server
+        socket.on('chat message', function(msg) {
+            const item = document.createElement('li'); // Create a new list item element
+            item.textContent = msg; // Set its text content to the received message
+            messages.appendChild(item); // Add the list item to the messages list
+            window.scrollTo(0, document.body.scrollHeight); // Scroll to the bottom
+        });
+
+        // --- Optional: Listen for connect/disconnect events on client ---
+        socket.on('connect', () => {
+            console.log('✅ Connected to server:', socket.id);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('❌ Disconnected from server');
+        });
+
+    </script>
+</body>
+</html>
