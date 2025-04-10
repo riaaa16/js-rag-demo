@@ -3,25 +3,26 @@
 <html>
 <head>
     <title>Simple WebSocket Chat</title>
-    <style>
-        body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; }
-        #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
-        #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
-        #input:focus { outline: none; }
-        #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
-        #messages, #typing { list-style-type: none; margin: 0; padding: 0; }
-        #messages > li, #typing > li { padding: 0.5rem 1rem; }
-        #messages > li:nth-child(odd) { background: #efefef; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <ul id="messages"></ul>
-    <ul>
-        <li id="typing"></li>
-    </ul>
-    <form id="form" action="">
-        <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
+    <div id="content">
+        <div id="view">
+            <div id="online">
+                <h3 style="text-align: center;">Online</h3>
+                <ul id="userList"></ul>
+            </div>
+            <div id="chat">
+                <ul id="messages"></ul>
+                <ul>
+                    <li id="typing"></li>
+                </ul>
+            </div>
+        </div>
+        <form id="form" action="">
+            <input id="input" autocomplete="off" /><button>Send</button>
+        </form>
+    </div>
 
     <!-- Include the Socket.IO client library -->
     <script src="/socket.io/socket.io.js"></script>
@@ -34,10 +35,42 @@
         const input = document.getElementById('input');
         const messages = document.getElementById('messages');
         const typingIndicator = document.getElementById('typing');
+        const userList= document.getElementById('userList');
 
         // To monitor typing
         let typing = false;
         let timeout;
+
+        // --- Username Prompt ---
+        function requestUsername() {
+            let username = prompt("Enter your username"); // Prompt user for username
+            if (username) { // If username exists
+                socket.emit('set username', username); // Send 'set username' event to server
+            } else { // If username is empty
+                requestUsername(); // Request username again
+            }
+        }
+
+        // --- Username Registered? ---
+        socket.on('username register', (result) => {
+            const message = result ? 'Username was successfully registered.' : 'Username is taken or invalid.'
+            alert (message);
+            socket.username = username;
+
+            if (result === false) {requestUsername()}; // If result was false, request username again
+        });
+
+        // --- Connected users ---
+        socket.on('user list', (usernames) => {
+            userList.innerHTML = ''; // Clear current list
+
+            // For each user
+            usernames.forEach((username) => {
+                const li = document.createElement('li'); // Create li
+                li.textContent = username; // Set text view
+                userList.appendChild(li); // Append
+            });
+        })
 
         // --- Sending Messages ---
         // Add an event listener for when the form is submitted
@@ -68,7 +101,7 @@
 
         // Add an event listener for 'typing' events coming FROM the server
         socket.on('typing', usersTyping => {
-            const filteredUsers = usersTyping.filter(userID => userID !== socket.id); // Filters out client from list
+            const filteredUsers = usersTyping.filter(userID => userID !== socket.username); // Filters out client from list
 
             if (filteredUsers.length === 0) { // If no one is typing
                 typingIndicator.textContent = '';
@@ -81,9 +114,9 @@
 
         // --- Receiving Messages ---
         // Add an event listener for 'chat message' events coming FROM the server
-        socket.on('chat message', function(msg) {
+        socket.on('chat message', function(data) {
             const item = document.createElement('li'); // Create a new list item element
-            item.textContent = msg; // Set its text content to the received message
+            item.textContent = `${data.username}: ${data.message}`; // Set its text view to the received message
             messages.appendChild(item); // Add the list item to the messages list
             window.scrollTo(0, document.body.scrollHeight); // Scroll to the bottom
         });
@@ -96,6 +129,8 @@
         socket.on('disconnect', () => {
             console.log('❌ Disconnected from server');
         });
+
+        requestUsername(); // Call function to prompt user for username
 
     </script>
 </body>

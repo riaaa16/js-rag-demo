@@ -1,0 +1,124 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+    background-color: #f4f4f4;
+}
+
+#content {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 1rem;
+}
+
+#view {
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
+    flex: 1;
+    overflow: hidden;
+}
+
+#online {
+    background: #fff;
+    border: 1px solid #ccc;
+    width: 200px;
+    max-height: 100%;
+    overflow-y: auto;
+    border-radius: 8px;
+}
+
+#userList {
+    list-style-type: none;
+}
+
+#userList li {
+    position: relative;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+#userList li::before {
+    content: '';
+    position: absolute;
+    left: -1.5em; /* Adjust the position of the dot */
+    top: 50%;
+    transform: translateY(-50%); /* Center the dot vertically */
+    width: 0.5em; /* Size of the dot */
+    height: 0.5em;
+    background-color: green; /* Green color for the dot */
+    border-radius: 50%; /* Make it round */
+  }
+
+#chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#chat, #online {
+    padding: 0.5em;
+    margin-bottom: 1em;
+}
+
+#messages {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+#messages > li {
+    padding: 0.5rem 1rem;
+    background: #fff;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+#messages > li:nth-child(odd) {
+    background: #efefef;
+}
+
+#typing {
+    list-style-type: none;
+    margin: 0.5rem 0;
+    padding: 0;
+    text-align: center;
+    font-style: italic;
+    color: #666;
+}
+
+#form {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    border-radius: 8px;
+    align-items: center;
+}
+
+#input {
+    flex-grow: 1;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    border: 1px solid #ccc;
+    outline: none;
+}
+
+#form > button {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    cursor: pointer;
+}
+
+#form > button:hover {
+    background: #555;
+}
